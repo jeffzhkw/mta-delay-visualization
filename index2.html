@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Stacked Bar Chart: Numbers</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+  </head>
+  <body>
+    <div id="chart"></div>
+
+    <script>
+      async function loadData(csvFile) {
+        const categories = [
+          "Crew Availability",
+          "External Factors",
+          "Infrastructure & Equipment",
+          "Planned ROW Work",
+          "Police & Medical",
+        ];
+
+        // Read the CSV file using d3.csv
+        const rawData = await d3.csv(csvFile, function (d) {
+          // Convert delay values to numbers right during the loading
+          d.delays = +d.delays;
+          return d;
+        });
+
+        // Process and transform data into the required format
+        let transformedData = d3
+          .rollups(
+            rawData,
+            (v) => ({
+              "Crew Availability": d3.sum(v, (d) =>
+                d.reporting_category === "Crew Availability" ? d.delays : 0
+              ),
+              "External Factors": d3.sum(v, (d) =>
+                d.reporting_category === "External Factors" ? d.delays : 0
+              ),
+              "Infrastructure & Equipment": d3.sum(v, (d) =>
+                d.reporting_category === "Infrastructure & Equipment"
+                  ? d.delays
+                  : 0
+              ),
+              "Planned ROW Work": d3.sum(v, (d) =>
+                d.reporting_category === "Planned ROW Work" ? d.delays : 0
+              ),
+              "Police & Medical": d3.sum(v, (d) =>
+                d.reporting_category === "Police & Medical" ? d.delays : 0
+              ),
+            }),
+            (d) => d.month
+          )
+          .map(([month, data]) => ({ month, ...data }));
+
+        return transformedData;
+      }
+
+      const startMonth = [
+        "2024-03",
+        "2024-02",
+        "2024-01",
+        "2023-12",
+        "2023-11",
+        "2023-10",
+        "2023-09",
+        "2023-08",
+        "2023-07",
+        "2023-06",
+        "2023-05",
+        "2023-04",
+        "2023-03",
+        "2023-02",
+        "2023-01",
+        "2022-12",
+        "2022-11",
+        "2022-10",
+        "2022-09",
+        "2022-08",
+        "2022-07",
+        "2022-06",
+        "2022-05",
+        "2022-04",
+        "2022-03",
+        "2022-02",
+        "2022-01",
+        "2021-12",
+        "2021-11",
+        "2021-10",
+        "2021-09",
+        "2021-08",
+        "2021-07",
+        "2021-06",
+        "2021-05",
+        "2021-04",
+        "2021-03",
+        "2021-02",
+        "2021-01",
+        "2020-12",
+        "2020-11",
+        "2020-10",
+        "2020-09",
+        "2020-08",
+        "2020-07",
+        "2020-06",
+        "2020-05",
+        "2020-04",
+        "2020-03",
+        "2020-02",
+        "2020-01",
+      ];
+
+      const endMonth = [
+        "2024-03",
+        "2024-02",
+        "2024-01",
+        "2023-12",
+        "2023-11",
+        "2023-10",
+        "2023-09",
+        "2023-08",
+        "2023-07",
+        "2023-06",
+        "2023-05",
+        "2023-04",
+        "2023-03",
+        "2023-02",
+        "2023-01",
+        "2022-12",
+        "2022-11",
+        "2022-10",
+        "2022-09",
+        "2022-08",
+        "2022-07",
+        "2022-06",
+        "2022-05",
+        "2022-04",
+        "2022-03",
+        "2022-02",
+        "2022-01",
+        "2021-12",
+        "2021-11",
+        "2021-10",
+        "2021-09",
+        "2021-08",
+        "2021-07",
+        "2021-06",
+        "2021-05",
+        "2021-04",
+        "2021-03",
+        "2021-02",
+        "2021-01",
+        "2020-12",
+        "2020-11",
+        "2020-10",
+        "2020-09",
+        "2020-08",
+        "2020-07",
+        "2020-06",
+        "2020-05",
+        "2020-04",
+        "2020-03",
+        "2020-02",
+        "2020-01",
+      ];
+
+      loadData("filtered_data.csv").then((data) => {
+        console.log(data);
+
+        // Set dimensions and margins for the graph
+        const margin = { top: 20, right: 30, bottom: 40, left: 50 },
+          width = 960 - margin.left - margin.right,
+          height = 500 - margin.top - margin.bottom;
+
+        // Append the svg object to the body of the page
+        const svg = d3
+          .select("#chart")
+          .append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // List of subgroups = header of the csv files = soil condition here
+        const subgroups = [
+          "Crew Availability",
+          "External Factors",
+          "Infrastructure & Equipment",
+          "Planned ROW Work",
+          "Police & Medical",
+        ];
+
+        // List of groups = month labels extracted from the dataset
+        const groups = data.map((d) => d.month).reverse();
+
+        // Add X axis
+        const x = d3
+          .scaleBand()
+          .domain(groups)
+          .range([0, width])
+          .padding([0.2]);
+        svg
+          .append("g")
+          .attr("transform", `translate(0, ${height})`)
+          .call(d3.axisBottom(x).tickSizeOuter(0));
+
+        // Add Y axis
+        const y = d3
+          .scaleLinear()
+          .domain([
+            0,
+            d3.max(data, (d) => d3.sum(subgroups, (subgroup) => +d[subgroup])),
+          ])
+          .nice()
+          .range([height, 0]);
+        svg.append("g").call(d3.axisLeft(y));
+
+        // color palette = one color per subgroup
+        const color = d3
+          .scaleOrdinal()
+          .domain(subgroups)
+          .range(["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00"]);
+
+        // Define the div for the tooltip
+        const tooltip = d3
+          .select("#chart")
+          .append("div")
+          .attr("class", "tooltip")
+          .style("opacity", 0)
+          .style("position", "absolute")
+          .style("padding", "10px")
+          .style("background", "white")
+          .style("border", "1px solid black")
+          .style("border-radius", "5px")
+          .style("pointer-events", "none");
+
+        // Stack the data
+        const stackedData = d3.stack().keys(subgroups)(data);
+
+        // Show the bars
+        svg
+          .append("g")
+          .selectAll("g")
+          // Enter in the stack data = loop key per key = group per group
+          .data(stackedData)
+          .join("g")
+          .attr("fill", (d) => color(d.key))
+          .selectAll("rect")
+          // enter a second time = loop subgroup per subgroup to add all rectangles
+          .data((d) => d)
+          .join("rect")
+          .attr("x", (d) => x(d.data.month))
+          .attr("y", (d) => y(d[1]))
+          .attr("height", (d) => y(d[0]) - y(d[1]))
+          .attr("width", x.bandwidth())
+          .on("mouseover", function (event, d) {
+            tooltip.transition().duration(200).style("opacity", 0.9);
+            tooltip
+              .html(
+                "Category: " +
+                  d3.select(this.parentNode).datum().key +
+                  "<br/>" +
+                  "Delays: " +
+                  (d[1] - d[0])
+              )
+              .style("left", event.pageX + "px")
+              .style("top", event.pageY - 28 + "px");
+          })
+          .on("mouseout", function (d) {
+            tooltip.transition().duration(500).style("opacity", 0);
+          });
+        svg
+          .select("g")
+          .attr("transform", `translate(0, ${height})`)
+          .call(d3.axisBottom(x).tickSizeOuter(0))
+          .selectAll("text")
+          .style("text-anchor", "end")
+          .attr("dx", "-.8em")
+          .attr("dy", ".15em")
+          .attr("transform", "rotate(-45)");
+
+        const legend = d3
+          .select("#chart")
+          .append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr("font-family", "sans-serif")
+          .attr("font-size", 10)
+          .attr("text-anchor", "end")
+          .selectAll("g")
+          .data(subgroups.slice().reverse())
+          .enter()
+          .append("g")
+          .attr("transform", function (d, i) {
+            return "translate(0," + i * 20 + ")";
+          });
+
+        legend
+          .append("rect")
+          .attr("x", width - 19)
+          .attr("width", 19)
+          .attr("height", 19)
+          .attr("fill", color);
+
+        legend
+          .append("text")
+          .attr("x", width - 24)
+          .attr("y", 9.5)
+          .attr("dy", "0.32em")
+          .text(function (d) {
+            return d;
+          });
+      });
+    </script>
+  </body>
+</html>
